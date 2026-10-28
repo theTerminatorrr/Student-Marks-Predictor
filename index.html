@@ -443,7 +443,7 @@
       <span>MarkPredict</span>
     </div>
     <!-- TODO: replace with your real repository URL -->
-    <a class="gh" id="ghlink" href="https://github.com/YOUR_USERNAME/YOUR_REPO" target="_blank" rel="noopener">
+    <a class="gh" id="ghlink" href="https://github.com/theTerminatorrr/Student-Marks-Predictor" target="_blank" rel="noopener">
       <svg viewBox="0 0 16 16" aria-hidden="true">
         <path
           d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
@@ -496,11 +496,39 @@
       { id: "sleep_hours", label: "Sleep hours per day", min: 0, max: 24, step: 0.5, val: 8 },
     ];
 
-    // Where the Flask server lives. Same origin when served by Flask or when deployed;
-    // falls back to local Flask when this file is opened via file:// or another local dev server.
-    const isLocalDev = location.protocol === "file:" ||
-      (["localhost", "127.0.0.1"].includes(location.hostname) && location.port !== "5000");
-    const API_BASE = window.API_BASE ?? (isLocalDev ? "http://127.0.0.1:5000" : "");
+    // The Random Forest runs in the browser: model.json holds the exported trees.
+    let modelPromise = null;
+    function loadModel() {
+      if (!modelPromise) {
+        modelPromise = fetch("model.json")
+          .then(r => {
+            if (!r.ok) throw new Error(`model.json not found (status ${r.status}). Upload it next to index.html.`);
+            return r.json();
+          })
+          .catch(e => {
+            modelPromise = null;
+            if (e instanceof TypeError) {
+              throw new Error("Could not load model.json. Open this page from a web server or GitHub Pages, not file://.");
+            }
+            throw e;
+          });
+      }
+      return modelPromise;
+    }
+
+    async function predictLocal(p) {
+      const m = await loadModel();
+      const x = m.features.map(n => Math.fround(p[n])); // sklearn works in float32
+      let sum = 0;
+      for (const t of m.trees) {
+        let i = 0;
+        while (t.l[i] !== -1) i = x[t.f[i]] <= t.t[i] ? t.l[i] : t.r[i];
+        sum += t.v[i];
+      }
+      const score = Math.max(0, Math.min(100, sum / m.trees.length));
+      return { score: Math.round(score * 10) / 10, mae: m.mae };
+    }
+    loadModel().catch(() => { }); // start downloading early; errors are shown on predict
 
     const $ = (s) => document.querySelector(s);
     const wrap = $("#fields");
@@ -560,20 +588,7 @@
 
       btn.disabled = true; btn.textContent = "Predicting...";
       try {
-        const res = await fetch(API_BASE + "/predict", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const type = res.headers.get("content-type") || "";
-        if (!type.includes("application/json")) {
-          throw new Error(
-            `Server replied with ${res.status} (not JSON). Make sure app.py is running ` +
-            `and open http://127.0.0.1:5000 .`
-          );
-        }
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Prediction failed.");
+        const data = await predictLocal(payload);
 
         const s = data.score;
         $("#bar").style.strokeDashoffset = 628.3 * (1 - s / 100);
@@ -582,9 +597,7 @@
         $("#grade").textContent = g;
         $("#note").textContent = `${msg} Typical model error is about ±${data.mae} marks.`;
       } catch (e) {
-        err.textContent = e instanceof TypeError
-          ? "Cannot reach the prediction server. Make sure app.py is running."
-          : e.message;
+        err.textContent = e.message || "Prediction failed.";
         err.style.display = "block";
       } finally {
         btn.disabled = false; btn.textContent = "Predict my score";
