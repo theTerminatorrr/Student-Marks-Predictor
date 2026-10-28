@@ -6,6 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MarkPredict</title>
   <meta name="description" content="Predict your exam score from study hours, attendance, previous score and sleep.">
+  <link rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='4' width='5' height='24' rx='2.5' fill='%2307356b'/%3E%3Crect x='10' y='4' width='5' height='24' rx='2.5' fill='%231b6fa8'/%3E%3Crect x='17' y='4' width='5' height='24' rx='2.5' fill='%231f87d6'/%3E%3Crect x='24' y='4' width='5' height='24' rx='2.5' fill='%235bc0de'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#0b0f12">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -29,7 +32,7 @@
     </header>
 
     <section class="hero">
-      <h1>Predict Your Exam Score</h1>
+      <h1>Predict your exam score</h1>
       <p>Enter your habits and past performance. A Random Forest model does the rest.</p>
     </section>
 
@@ -73,10 +76,12 @@
         </div>
         <h3 id="title">Awaiting input</h3>
         <p id="msg">Adjust the sliders and press predict to see your estimated exam score.</p>
-        <p id="note" class="note" hidden>Demo estimate. Add model.json to use your trained model.</p>
+        <p id="note" class="note" hidden>model.js is missing or failed to load. Keep it in the same folder as
+          index.html.</p>
       </section>
     </div>
   </div>
+  <script src="model.js"></script>
   <script src="script.js"></script>
 </body>
 

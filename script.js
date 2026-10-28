@@ -1,11 +1,8 @@
 const FEATURES = ["study_hours", "attendance_percent", "previous_score", "sleep_hours"];
-let forest = null; // filled from model.json if it exists
 
-// Load the exported Random Forest (optional)
-fetch("model.json")
-  .then(r => (r.ok ? r.json() : Promise.reject()))
-  .then(m => { forest = m.trees; })
-  .catch(() => { document.getElementById("note").hidden = false; });
+// The trained Random Forest comes from model.js (window.MODEL)
+const forest = (window.MODEL && window.MODEL.trees) || null;
+if (!forest) document.getElementById("note").hidden = false;
 
 function predictTree(t, x) {
   let i = 0;
@@ -13,15 +10,8 @@ function predictTree(t, x) {
   return t.v[i];
 }
 
-// Rough stand-in used only when model.json is missing
-function demoPredict([study, attend, prev, sleep]) {
-  return 0.45 * prev + 0.2 * attend + 2.2 * Math.min(study, 10) + 1.5 * Math.min(sleep, 8) - 8;
-}
-
 function predict(x) {
-  const raw = forest
-    ? forest.reduce((sum, t) => sum + predictTree(t, x), 0) / forest.length
-    : demoPredict(x);
+  const raw = forest.reduce((sum, t) => sum + predictTree(t, x), 0) / forest.length;
   return Math.max(0, Math.min(100, Math.round(raw)));
 }
 
@@ -49,6 +39,13 @@ FEATURES.forEach(id => {
 
 document.getElementById("form").addEventListener("submit", e => {
   e.preventDefault();
+  if (!forest) {
+    document.getElementById("ring").style.setProperty("--p", 0);
+    document.getElementById("score").textContent = "--";
+    document.getElementById("title").textContent = "Model not loaded";
+    document.getElementById("msg").textContent = "model.js is missing or failed to load, so no prediction was made.";
+    return;
+  }
   const x = FEATURES.map(id => parseFloat(document.getElementById(id).value));
   const score = predict(x);
   const [title, msg] = verdict(score);

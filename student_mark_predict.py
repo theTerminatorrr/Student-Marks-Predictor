@@ -34,6 +34,7 @@ df["student_name"] = df["student_name"].astype(str).str.strip().str.title()
 df["study_hours"] = pd.to_numeric(df["study_hours"].astype(str).str.replace(" hrs", ""), errors="coerce")
 df["attendance_percent"] = pd.to_numeric(df["attendance_percent"].astype(str).str.replace("eighty", "80").str.replace("%", ""), errors="coerce")
 df["previous_score"] = pd.to_numeric(df["previous_score"].astype(str).str.replace(" / 100", ""), errors="coerce")
+df["sleep_hours"] = pd.to_numeric(df["sleep_hours"], errors="coerce")
 
 df.loc[df["study_hours"] > 24, "study_hours"] = None
 df.loc[df["attendance_percent"] > 100, "attendance_percent"] = None
@@ -80,3 +81,9 @@ new_student = pd.DataFrame({
 })
 score = model.predict(new_student)[0]
 print("Predicted score:", round(score))
+
+"""#Export the Model for the Website"""
+
+# creates model.js (the website loads it); in Colab it also downloads the file
+from export_model import export_model
+export_model(model, features)
