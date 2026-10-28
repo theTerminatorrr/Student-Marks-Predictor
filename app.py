@@ -1,10 +1,3 @@
-"""Backend for the Student Mark Predictor frontend.
-
-Run:
-    pip install flask pandas scikit-learn
-    python app.py
-Then open http://127.0.0.1:5000
-"""
 import os
 import pandas as pd
 from flask import Flask, jsonify, request, send_from_directory
@@ -59,6 +52,30 @@ model, MAE = train_model()
 print(f"Model trained. Test MAE: {MAE:.2f}")
 
 app = Flask(__name__)
+
+
+@app.after_request
+def add_cors(resp):
+    # Lets the page work when opened from Live Server or file:// during development.
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    return resp
+
+
+@app.route("/predict", methods=["OPTIONS"])
+def predict_preflight():
+    return "", 204
+
+
+@app.errorhandler(Exception)
+def handle_error(e):
+    # Always answer with JSON so the frontend can show the real problem.
+    from werkzeug.exceptions import HTTPException
+    if isinstance(e, HTTPException):
+        return jsonify(error=f"{e.code} {e.name}: {e.description}"), e.code
+    app.logger.exception("Unhandled error")
+    return jsonify(error=f"Server error: {e}"), 500
 
 
 @app.get("/")
