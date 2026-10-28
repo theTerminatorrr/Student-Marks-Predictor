@@ -1,0 +1,59 @@
+const FEATURES = ["study_hours", "attendance_percent", "previous_score", "sleep_hours"];
+let forest = null; // filled from model.json if it exists
+
+// Load the exported Random Forest (optional)
+fetch("model.json")
+  .then(r => (r.ok ? r.json() : Promise.reject()))
+  .then(m => { forest = m.trees; })
+  .catch(() => { document.getElementById("note").hidden = false; });
+
+function predictTree(t, x) {
+  let i = 0;
+  while (t.l[i] !== -1) i = x[t.f[i]] <= t.t[i] ? t.l[i] : t.r[i];
+  return t.v[i];
+}
+
+// Rough stand-in used only when model.json is missing
+function demoPredict([study, attend, prev, sleep]) {
+  return 0.45 * prev + 0.2 * attend + 2.2 * Math.min(study, 10) + 1.5 * Math.min(sleep, 8) - 8;
+}
+
+function predict(x) {
+  const raw = forest
+    ? forest.reduce((sum, t) => sum + predictTree(t, x), 0) / forest.length
+    : demoPredict(x);
+  return Math.max(0, Math.min(100, Math.round(raw)));
+}
+
+function verdict(s) {
+  if (s >= 85) return ["Excellent", "Strong habits. Keep this routine going."];
+  if (s >= 70) return ["Good", "A little more study time could lift this further."];
+  if (s >= 50) return ["Average", "Attendance and study time make the biggest difference."];
+  return ["Needs work", "Try more study time and more regular attendance."];
+}
+
+// Slider and number box stay in sync
+FEATURES.forEach(id => {
+  const range = document.getElementById(id);
+  const num = document.getElementById("n-" + id);
+  const paint = () => range.style.setProperty("--fill", (range.value - range.min) / (range.max - range.min) * 100 + "%");
+  range.addEventListener("input", () => { num.value = range.value; paint(); });
+  num.addEventListener("input", () => {
+    if (num.value === "") return;
+    const v = Math.min(+range.max, Math.max(+range.min, +num.value));
+    range.value = v; paint();
+  });
+  num.addEventListener("blur", () => { num.value = range.value; });
+  paint();
+});
+
+document.getElementById("form").addEventListener("submit", e => {
+  e.preventDefault();
+  const x = FEATURES.map(id => parseFloat(document.getElementById(id).value));
+  const score = predict(x);
+  const [title, msg] = verdict(score);
+  document.getElementById("ring").style.setProperty("--p", score);
+  document.getElementById("score").textContent = score;
+  document.getElementById("title").textContent = title;
+  document.getElementById("msg").textContent = msg;
+});
